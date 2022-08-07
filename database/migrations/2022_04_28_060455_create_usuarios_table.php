@@ -25,7 +25,7 @@ class CreateUsuariosTable extends Migration
      * Reverse the migrations.
      *
      * @return void
-     */ //
+     */ //decelopment
     public function down()
     {
         Schema::dropIfExists('usuarios');

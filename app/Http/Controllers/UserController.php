@@ -38,16 +38,46 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        if ($request->hasFile("selfie")) {
-            $file = $request->file("selfie");
-            $imageName = time() . '_' . $file->getClientOriginalName();
-            $file->move(\public_path("selfie/"), $imageName);
+        if($request->id == null){
+            if ($request->hasFile("selfie")) {
+                $file = $request->file("selfie");
+                $imageName = time() . '_' . $file->getClientOriginalName();
+                $file->move(\public_path("selfie/"), $imageName);
 
-            $user = new Usuario([
+                $user = new Usuario([
+                    "nome" => $request->nome,
+                    "selfie" => $imageName,
+                ]);
+                $user->save();
+            }
+        }else{
+            $user = Usuario::findOrFail($request->id);
+            if ($request->hasFile("selfie")) {
+                if (File::exists("selfie/" . $user->selfie)) {
+                    File::delete("selfie/" . $user->selfie);
+                }
+                $file = $request->file("selfie");
+                $user->selfie = time() . "_" . $file->getClientOriginalName();
+                $file->move(\public_path("/selfie"), $user->selfie);
+                $request['selfie'] = $user->selfie;
+            }
+    
+            $user->update([
                 "nome" => $request->nome,
-                "selfie" => $imageName,
+                "selfie" => $user->selfie,
             ]);
-            $user->save();
+    
+            if ($request->hasFile("images")) {
+                $files = $request->file("images");
+                foreach ($files as $file) {
+                    $imageName = time() . '_' . $file->getClientOriginalName();
+                    $request["user_id"] = $request->id;
+                    $request["image"] = $imageName;
+                    $file->move(\public_path("images"), $imageName);
+                    Image::create($request->all());
+                }
+            }
+    
         }
 
         return redirect("/");
@@ -58,13 +88,7 @@ class UserController extends Controller
      *
      * @param  \App\Models\Usuario  $user
      * @return \Illuminate\Http\Response
-     */
-    public function show(Usuario $user)
-    {
-        //
-    }
 
-    /**
      * Show the form for editing the specified resource.
      *
      * @param  \App\Models\Usuario  $user
@@ -74,47 +98,9 @@ class UserController extends Controller
     {
         $id = $request->id;
         $users = Usuario::findOrFail($id);
-        return view('edit')->with('users', $users);
+        return view('propietarios.form')->with('users', $users);
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Usuario  $user
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        $user = Usuario::findOrFail($id);
-        if ($request->hasFile("selfie")) {
-            if (File::exists("selfie/" . $user->selfie)) {
-                File::delete("selfie/" . $user->selfie);
-            }
-            $file = $request->file("selfie");
-            $user->selfie = time() . "_" . $file->getClientOriginalName();
-            $file->move(\public_path("/selfie"), $user->selfie);
-            $request['selfie'] = $user->selfie;
-        }
-
-        $user->update([
-            "nome" => $request->nome,
-            "selfie" => $user->selfie,
-        ]);
-
-        if ($request->hasFile("images")) {
-            $files = $request->file("images");
-            foreach ($files as $file) {
-                $imageName = time() . '_' . $file->getClientOriginalName();
-                $request["user_id"] = $id;
-                $request["image"] = $imageName;
-                $file->move(\public_path("images"), $imageName);
-                Image::create($request->all());
-            }
-        }
-
-        return redirect("/");
-    }
 
     /**
      * Remove the specified resource from storage.

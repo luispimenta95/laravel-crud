@@ -21,12 +21,12 @@ use App\Http\Controllers\ArtigoController;
 Route::get('/', [UserController::class, 'index']);
 
 Route::get('/create', function () {
-    return view('create');
+    return view('propietarios.form');
 });
 
 Route::post('/post', [UserController::class, 'store']);
 Route::post('/edit/', [UserController::class, 'edit']);
-Route::put('/update/{id}', [UserController::class, 'update']);
+Route::put('/update/{id}', [UserController::class, 'store']);
 Route::get('/contas', [ContaController::class, 'index']);
 Route::post('/delete/', [UserController::class, 'delete']);
 

@@ -7,19 +7,21 @@ use App\Models\Image;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+
 class UserController extends Controller
 {
     private $mensagens;
-    private $helpper ;
+    private $helpper;
     private $msgView = null;
 
-    public function __construct(){
+    public function __construct()
+    {
         $this->helpper = $this->recuperarFuncoes();
         $this->mensagens = $this->helpper->recuperarMensagensPadrao();
     }
 
 
-     
+
 
     /**
      * Display a listing of the resource.
@@ -29,7 +31,7 @@ class UserController extends Controller
     public function index()
     {
         $users = Usuario::all();
-        foreach ($users as $user){
+        foreach ($users as $user) {
             $user->cpf_cnpj = $this->helpper->formata($user->cpf_cnpj);
         }
         return view('index')->with('users', $users);
@@ -53,60 +55,15 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        if($this->helpper->valida($request->cpf) && $this->verificarUnicidade($request)){
-            if($request->id == null){
-                $this->msgView = $this->mensagens['cadastro'];
-                if ($request->hasFile("selfie")) {
-                    $file = $request->file("selfie");
-                    $imageName = time() . '_' . $file->getClientOriginalName();
-                    $file->move(\public_path("selfie/"), $imageName);
+        if ($this->helpper->valida($request->cpf) && $this->verificarUnicidade($request)) {
+            $dadosImg = $this->recuperarDadosImagem($request);
+            $this->msgView = $this->gerenciarDadosCadastro($request, $dadosImg);
+            $this->salvarFotos($request);
+        } else {
+            echo "Error creating";
+            die();
+        }
 
-                    $user = new Usuario([
-                        "nome" => $request->nome,
-                        "selfie" => $imageName,
-                        "cpf_cnpj" => $request->cpf
-
-                    ]);
-                    $user->save();
-                }
-            }else{
-                $this->msgView = $this->mensagens['edicao'];
-                $user = Usuario::findOrFail($request->id);
-                if ($request->hasFile("selfie")) {
-                    if (File::exists("selfie/" . $user->selfie)) {
-                        File::delete("selfie/" . $user->selfie);
-                    }
-                    $file = $request->file("selfie");
-                    $user->selfie = time() . "_" . $file->getClientOriginalName();
-                    $file->move(\public_path("/selfie"), $user->selfie);
-                    $request['selfie'] = $user->selfie;
-                }
-        
-                $user->update([
-                    "nome" => $request->nome,
-                    "selfie" => $user->selfie,
-                    "cpf_cnpj" => $request->cpf
-
-                ]);
-        
-                if ($request->hasFile("images")) {
-                    $files = $request->file("images");
-                    foreach ($files as $file) {
-                        $imageName = time() . '_' . $file->getClientOriginalName();
-                        $request["user_id"] = $request->id;
-                        $request["image"] = $imageName;
-                        $file->move(\public_path("images"), $imageName);
-                        Image::create($request->all());
-                    }
-                }
-            
-    
-         }
-     }else{
-        $this->msgView = $this->mensagens['cpfInvalido'];
-    
-    }
-        
 
         return redirect("/")->with('msg', $this->msgView);
     }
@@ -179,14 +136,92 @@ class UserController extends Controller
         Usuario::find($id)->delete();
         return redirect("/");
     }
-    public function recuperarFuncoes(){
+    public function recuperarFuncoes()
+    {
         return new Helpper();
     }
 
-    private function verificarUnicidade(Request $request){
-        if( count(Usuario::where("cpf_cnpj", $request->cpf)->get()) > 0){
+    private function verificarUnicidade(Request $request)
+    {
+        if (count(Usuario::where("cpf_cnpj", $request->cpf)->where('id', '!=', $request->id)->get()) > 0) {
             return false;
         }
         return true;
     }
+    private function salvarFotos(Request $request)
+    {
+
+        if ($request->hasFile("images")) {
+            $files = $request->file("images");
+            foreach ($files as $file) {
+                $imageName = time() . '_' . $file->getClientOriginalName();
+                $request["user_id"] = $request->id;
+                $request["image"] = $imageName;
+                $file->move(\public_path("images"), $imageName);
+                Image::create($request->all());
+            }
+        }
+    }
+    private function recuperarDadosImagem(Request $request): array
+    {
+        if ($request->hasFile("selfie")) {
+            $file = $request->file("selfie");
+            $imageName = time() . '_' . $file->getClientOriginalName();
+            $file->move(\public_path("selfie/"), $imageName);
+        }
+        $dados = array(
+            'imagem' => $imageName,
+            'arquivo' => $file
+        );
+        return $dados;
+    }
+    private function gerenciarDadosCadastro(Request $request, $dados)
+    {
+        if ($request->id == null) {
+            $this->msgView = $this->mensagens['cadastro'];
+            $this->createUser($request,$dados);
+        } else {
+            $this->msgView = $this->mensagens['edicao'];
+            $user = Usuario::findOrFail($request->id);
+            $selfie = $this->atualizarSelifie($user,$request);
+            $this->updateUser($request,$selfie);
+        }
+        return $this->msgView;
+    }
+    private function atualizarSelifie($user,Request $request){
+            $this->deletarSelfieAnterior($request,$user); 
+            $file = $request->file("selfie");
+            $user->selfie = time() . "_" . $file->getClientOriginalName();
+            $request['selfie'] = $user->selfie;
+
+         return  $user->selfie;
+    }
+
+    private function createUser(Request $request, $dados){
+        $user = new Usuario([
+            "nome" => $request->nome,
+            "selfie" => $dados['imagem'],
+            "cpf_cnpj" => $request->cpf
+
+        ]);
+        $user->save();
+    }
+    private function updateUser(Request $request,$selfie){
+        $user = Usuario::findOrFail($request->id);
+        $user->update([
+            "nome" => $request->nome,
+            "selfie" => $selfie,
+            "cpf_cnpj" => $request->cpf
+
+        ]);
+    }
+    private function deletarSelfieAnterior(Request $request, $user){
+        if ($request->hasFile("selfie")) {
+            if (File::exists("selfie/" . $user->selfie)) {
+                File::delete("selfie/" . $user->selfie);
+            }
+        }
+    }
+    
+
 }

@@ -110,26 +110,7 @@ class UserController extends Controller
         $users->delete();
         return back();
     }
-
-    public function deleteimage($id)
-    {
-        $images = Image::findOrFail($id);
-        if (File::exists("images/" . $images->image)) {
-            File::delete("images/" . $images->image);
-        }
-
-        Image::find($id)->delete();
-        return back();
-    }
-
-    public function deleteselfie($id)
-    {
-        $selfie = Usuario::findOrFail($id)->selfie;
-        if (File::exists("selfie/" . $selfie)) {
-            File::delete("selfie/" . $selfie);
-        }
-        return back();
-    }
+     
     public function delete(Request $request)
     {
         $id = $request->id;

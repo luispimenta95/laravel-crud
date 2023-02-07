@@ -9,7 +9,7 @@ use App\Models\Image;
 class Usuario extends Model
 {
     use HasFactory;
-    protected $fillable = ['nome', 'selfie'];
+    protected $fillable = ['nome', 'selfie','cpf_cnpj'];
 
     public function images()
     {

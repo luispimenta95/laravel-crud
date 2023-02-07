@@ -19,13 +19,12 @@
   <div class="container" style="margin-top: 50px;">
 
     <a href="/create" class="btn btn-outline-success">Novo usuário </a>
-
     <table class="table">
       <thead>
         <tr>
           <th>ID</th>
           <th>Nome</th>
-          <th>Selfie</th>
+          <th>CPF/CNPJ</th>
           <th>Editar</th>
           <th>Excluir</th>
         </tr>
@@ -37,8 +36,7 @@
         <tr>
           <th scope="row">{{ $user->id }}</th>
           <td>{{ $user->nome }}</td>
-          <td><img src="selfie/{{ $user->selfie }}" class="img-responsive" style="max-height:100px; max-width:100px" alt="" srcset=""></td>
-          <td>
+          <td>{{ $user->cpf_cnpj }}</td>          <td>
             <form action="/edit/" method="post">
               <input type="hidden" name="id" value="{{ $user->id }}" />
               <button class="btn btn-outline-primary" type=" submit">Editar</button>

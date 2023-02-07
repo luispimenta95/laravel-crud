@@ -27,11 +27,13 @@
             </div>
             <div class="col-md-3"></div>
             <div class="col-md-6">
-                <h3 class="text-center text-danger"><b>Gerenciar Propietário</b> </h3>
+                <h3 class="text-center text-default"><b>Gerenciar Propietário</b> </h3>
                 <div class="form-group">
                     <form action="/post" method="post" enctype="multipart/form-data">
                         @csrf
-                        <input type="text" name="nome" class="form-control m-2" placeholder="nome"  value="{{ isset($users->nome) ? $users->nome : ''  }}">
+                        <input type="text" name="nome" class="form-control m-2" placeholder="Nome do usuário"  value="{{ isset($users->nome) ? $users->nome : ''  }}">
+                        <input type="text" name="cpf" class="form-control m-2" placeholder="CPF/CNPJ"  value="{{ isset($users->cpf_cnpj) ? $users->cpf_cnpj : ''  }}">
+
                         <input type="hidden" name="id" value="{{ isset($users->id) ? $users->id : ''  }}" />
 
                         <label class="m-2">Selfie</label>

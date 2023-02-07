@@ -2,13 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Util\Helpper;
 use App\Models\Image;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
-
 class UserController extends Controller
 {
+    private $mensagens;
+    private $helpper ;
+    private $msgView = null;
+
+    public function __construct(){
+        $this->helpper = $this->recuperarFuncoes();
+        $this->mensagens = $this->helpper->recuperarMensagensPadrao();
+    }
+
+
+     
+
     /**
      * Display a listing of the resource.
      *
@@ -17,6 +29,9 @@ class UserController extends Controller
     public function index()
     {
         $users = Usuario::all();
+        foreach ($users as $user){
+            $user->cpf_cnpj = $this->helpper->formata($user->cpf_cnpj);
+        }
         return view('index')->with('users', $users);
     }
 
@@ -38,49 +53,62 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        if($request->id == null){
-            if ($request->hasFile("selfie")) {
-                $file = $request->file("selfie");
-                $imageName = time() . '_' . $file->getClientOriginalName();
-                $file->move(\public_path("selfie/"), $imageName);
-
-                $user = new Usuario([
-                    "nome" => $request->nome,
-                    "selfie" => $imageName,
-                ]);
-                $user->save();
-            }
-        }else{
-            $user = Usuario::findOrFail($request->id);
-            if ($request->hasFile("selfie")) {
-                if (File::exists("selfie/" . $user->selfie)) {
-                    File::delete("selfie/" . $user->selfie);
-                }
-                $file = $request->file("selfie");
-                $user->selfie = time() . "_" . $file->getClientOriginalName();
-                $file->move(\public_path("/selfie"), $user->selfie);
-                $request['selfie'] = $user->selfie;
-            }
-    
-            $user->update([
-                "nome" => $request->nome,
-                "selfie" => $user->selfie,
-            ]);
-    
-            if ($request->hasFile("images")) {
-                $files = $request->file("images");
-                foreach ($files as $file) {
+        if($this->helpper->valida($request->cpf) && $this->verificarUnicidade($request)){
+            if($request->id == null){
+                $this->msgView = $this->mensagens['cadastro'];
+                if ($request->hasFile("selfie")) {
+                    $file = $request->file("selfie");
                     $imageName = time() . '_' . $file->getClientOriginalName();
-                    $request["user_id"] = $request->id;
-                    $request["image"] = $imageName;
-                    $file->move(\public_path("images"), $imageName);
-                    Image::create($request->all());
-                }
-            }
-    
-        }
+                    $file->move(\public_path("selfie/"), $imageName);
 
-        return redirect("/");
+                    $user = new Usuario([
+                        "nome" => $request->nome,
+                        "selfie" => $imageName,
+                        "cpf_cnpj" => $request->cpf
+
+                    ]);
+                    $user->save();
+                }
+            }else{
+                $this->msgView = $this->mensagens['edicao'];
+                $user = Usuario::findOrFail($request->id);
+                if ($request->hasFile("selfie")) {
+                    if (File::exists("selfie/" . $user->selfie)) {
+                        File::delete("selfie/" . $user->selfie);
+                    }
+                    $file = $request->file("selfie");
+                    $user->selfie = time() . "_" . $file->getClientOriginalName();
+                    $file->move(\public_path("/selfie"), $user->selfie);
+                    $request['selfie'] = $user->selfie;
+                }
+        
+                $user->update([
+                    "nome" => $request->nome,
+                    "selfie" => $user->selfie,
+                    "cpf_cnpj" => $request->cpf
+
+                ]);
+        
+                if ($request->hasFile("images")) {
+                    $files = $request->file("images");
+                    foreach ($files as $file) {
+                        $imageName = time() . '_' . $file->getClientOriginalName();
+                        $request["user_id"] = $request->id;
+                        $request["image"] = $imageName;
+                        $file->move(\public_path("images"), $imageName);
+                        Image::create($request->all());
+                    }
+                }
+            
+    
+         }
+     }else{
+        $this->msgView = $this->mensagens['cpfInvalido'];
+    
+    }
+        
+
+        return redirect("/")->with('msg', $this->msgView);
     }
 
     /**
@@ -150,5 +178,15 @@ class UserController extends Controller
         $id = $request->id;
         Usuario::find($id)->delete();
         return redirect("/");
+    }
+    public function recuperarFuncoes(){
+        return new Helpper();
+    }
+
+    private function verificarUnicidade(Request $request){
+        if( count(Usuario::where("cpf_cnpj", $request->cpf)->get()) > 0){
+            return false;
+        }
+        return true;
     }
 }
